@@ -1,49 +1,72 @@
 var express = require("express");
 var mongojs = require("mongojs");
+var mongoose = require("mongoose");
 var app = express();
-var databaseUrl = "scraper";
+var axios = require("axios");
+var cheerio = require("cheerio");
+
+app.use(express.static("public"));
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+var exphbs = require("express-handlebars");
+
+app.engine("handlebars", exphbs({ defaultLayout: "main" }));
+app.set("view engine", "handlebars");
+
+
+var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/mongoHeadlines";
+
+
+
 var collections = ["scrapedData"];
-var db = mongojs(databaseUrl, collections);
-db.on("error", function (error) {
-    console.log("Database Error:", error);
-});
+var db = require("./models");
+
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true });
+
 app.get("/", function (req, res) {
     res.send("Hello world");
 });
-app.get("/all", function (req, res) {
-    db.scrapedData.find({}, function (error, found) {
-        if (error) {
-            console.log(error);
-        }
-        else {
-            res.json(found);
-        }
-    });
-});
-app.get("/scrape", function (req, res) {
-    axios.get("https://news.ycombinator.com/").then(function (response) {
-        var $ = cheerio.load(response.data);
-        $(".title").each(function (i, element) {
-            var title = $(element).children("a").text();
-            var link = $(element).children("a").attr("href");
 
-            if (title && link) {
-                db.scrapedData.insert({
+app.get("/scrape", function (req, res) {
+    axios.get("http://www.lavanguardia.com/politica")
+        .then(function (response) {
+            console.log("something ran");
+            var $ = cheerio.load(response.data);
+
+            var articlesArray = [];
+
+            $("article").each(function (i, element) {
+
+                var title = $(this).find("h1").text();
+                var link = $(this).find("a").attr("href");
+                var photo = $(this).find("img").attr("src");
+
+                var result = {
                     title: title,
-                    link: link
-                },
-                    function (err, inserted) {
-                        if (err) {
-                            console.log(err);
-                        }
-                        else {
-                            console.log(inserted);
-                        }
-                    });
-            }
+                    link: link,
+                    photo: photo
+                };
+
+                articlesArray.push(result);
+
+
+            });
+            console.log(articlesArray);
+            db.Article.create(articlesArray);
         });
-    });
     res.send("Scrape Complete");
+});
+
+app.get("/all", function (req, res) {
+    db.Article.find({})
+        .then(function (Article) {
+            res.json(Article);
+        })
+        .catch(function (err) {
+            res.json(err)
+        })
 });
 
 app.listen(3000, function () {
