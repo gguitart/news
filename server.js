@@ -10,7 +10,7 @@ app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-var exphbs = require("express-handlebars");
+var exphbs = require("express-handlebars"); 
 
 app.engine("handlebars", exphbs({ defaultLayout: "main" }));
 app.set("view engine", "handlebars");
@@ -41,12 +41,10 @@ app.get("/scrape", function (req, res) {
 
                 var title = $(this).find("h1").text();
                 var link = $(this).find("a").attr("href");
-                var photo = $(this).find("img").attr("src");
 
                 var result = {
                     title: title,
                     link: link,
-                    photo: photo
                 };
 
                 articlesArray.push(result);
